@@ -1,0 +1,116 @@
+package com.alexwan.gym;
+
+import android.app.ListFragment;
+import android.app.LoaderManager.LoaderCallbacks;
+import android.content.Context;
+import android.content.CursorLoader;
+import android.content.Loader;
+import android.database.Cursor;
+import android.os.Bundle;
+import android.text.format.DateFormat;
+import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.CursorAdapter;
+import android.widget.TextView;
+
+public class HistoryFragment extends ListFragment  implements LoaderCallbacks<Cursor> {
+
+	static final int LOADER_ID = 1;
+
+	HistoryAdapter mAdapter;
+	
+	@Override
+	public void onActivityCreated(Bundle savedInstanceState) {
+
+		setHasOptionsMenu(true);
+		
+		setEmptyText(getResources().getString(R.string.empty_list));
+		
+		mAdapter = new HistoryAdapter(getActivity(), null, getArguments());
+		
+		setListAdapter(mAdapter);
+
+		getLoaderManager().initLoader(LOADER_ID, getArguments(), this);
+		
+		getListView().setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+
+			@Override
+			public boolean onItemLongClick(AdapterView<?> parent, View view,
+					int position, long id) {
+				((MainActivity)getActivity()).showTraining(id);
+				return true;
+			}
+		
+		});
+
+		super.onActivityCreated(savedInstanceState);
+	}
+
+	@Override
+	public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+		inflater.inflate(R.menu.history, menu);
+		super.onCreateOptionsMenu(menu, inflater);
+	}
+
+	@Override
+	public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+		return new CursorLoader(getActivity(), GymDb.TRAINING_TOTALS._URI, null, null, null, null);
+	}
+
+	@Override
+	public void onLoadFinished(Loader<Cursor> arg0, Cursor cursor) {
+		mAdapter.swapCursor(cursor);
+	}
+
+	@Override
+	public void onLoaderReset(Loader<Cursor> arg0) {
+		mAdapter.swapCursor(null);
+	}
+
+	public class HistoryAdapter extends CursorAdapter {
+		
+		String mSelection = GymDb.TRAINING.TRAINING_ID + "=" + "?";
+		String[] mSelectionArgs = new String[] { "" };
+
+		public HistoryAdapter(Context context, Cursor c, Bundle args) {
+			super(context, c, true);
+			if(args != null && args.containsKey(GymDb.ARGS.EXERC_ID)) {
+				mSelection += " and " + GymDb.TRAINING.EXERCISE_ID + "=" + "?";
+				mSelectionArgs = new String[] { "", "" + args.getLong(GymDb.ARGS.EXERC_ID)};
+			}
+		}
+
+		@Override
+		public View newView(Context context, Cursor cursor, ViewGroup parent) {
+			return LayoutInflater.from(context).inflate(R.layout.history_item, parent, false);
+		}
+
+		@Override
+		public void bindView(View view, Context context, Cursor cursor) {
+			((TextView)view.findViewById(R.id.textDate)).setText(
+					DateFormat.getDateFormat(context).format(
+							GymDb.getLong(cursor, GymDb.TRAINING.TRAINING_ID)));
+			((TextView)view.findViewById(R.id.textTotals)).setText(
+					GymDb.getInt(cursor, GymDb.TRAINING_TOTALS.SET_COUNT)		
+					+ "/" + GymDb.getInt(cursor, GymDb.TRAINING_TOTALS.REP_COUNT)	
+					+ "/" + GymDb.getInt(cursor, GymDb.TRAINING_TOTALS.TOTAL_REPS));
+			((TextView)view.findViewById(R.id.textTotalTime)).setText(
+					" " + formatAsTime(GymDb.getLong(cursor, GymDb.TRAINING_TOTALS.TOTAL_TIME)));
+			mSelectionArgs[0] = "" + GymDb.getLong(cursor, GymDb.TRAINING.TRAINING_ID);
+			
+		}
+		
+		private String formatAsTime(long time) {
+			long ss = time / 1000;
+			long mm = ss / 60; ss = ss - mm * 60;
+			long hh = mm / 60; mm = mm - hh * 60;
+			return "" + hh + ":" + mm + ":" + ss;
+			
+		}
+		
+	}
+}
