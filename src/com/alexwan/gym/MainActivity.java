@@ -126,6 +126,8 @@ public class MainActivity extends Activity {
 								if(hh < 2) setTitle(String.format("%d:%d:%d", hh, mm, ss));
 							}
 							
+							
+							
 						}
 					});
 				}
